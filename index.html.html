@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Practice - Let's Talk!</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 700px;
+            width: 100%;
+            padding: 40px;
+        }
+        h1 { color: #4a4a8a; text-align: center; margin-bottom: 10px; font-size: 24px; }
+        .progress {
+            text-align: center; color: #888; margin-bottom: 25px; font-size: 14px;
+        }
+        .question-box {
+            background: #f0f4ff;
+            border-radius: 16px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 25px;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .question-text {
+            font-size: 26px;
+            color: #2c3e50;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        .answer-hint {
+            background: #fff9e6;
+            border-left: 4px solid #ffc107;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 15px;
+            color: #6b5d1f;
+        }
+        .answer-hint strong { color: #4a3d00; }
+        .buttons { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        button {
+            font-size: 17px;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.15); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #playBtn { background: #3498db; color: white; }
+        #recordBtn { background: #e74c3c; color: white; }
+        #nextBtn { background: #27ae60; color: white; }
+        #restartBtn { background: #95a5a6; color: white; font-size: 14px; padding: 10px 20px; }
+        .result-box {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 17px;
+            line-height: 1.5;
+            display: none;
+        }
+        .result-box.correct { background: #d4edda; color: #155724; border-left: 5px solid #28a745; }
+        .result-box.almost { background: #fff3cd; color: #856404; border-left: 5px solid #ffc107; }
+        .result-box.wrong { background: #f8d7da; color: #721c24; border-left: 5px solid #dc3545; }
+        .result-box.listening { background: #cce5ff; color: #004085; border-left: 5px solid #007bff; }
+        .correction {
+            margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.6);
+            border-radius: 8px; font-style: italic;
+        }
+        .heard { font-size: 15px; opacity: 0.8; margin-top: 6px; }
+        @media (max-width: 500px) {
+            .question-text { font-size: 20px; }
+            .container { padding: 25px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗣️ Let's Talk in English!</h1>
+        <div class="progress" id="progress">Вопрос 1 из 6</div>
+
+        <div class="question-box">
+            <div class="question-text" id="questionText">Нажми "Прослушать", чтобы начать</div>
+        </div>
+
+        <div class="answer-hint" id="answerHint">
+            <strong>Как отвечать:</strong> <span id="hintText">—</span>
+        </div>
+
+        <div class="buttons">
+            <button id="playBtn">🔊 Прослушать</button>
+            <button id="recordBtn" disabled>🎤 Ответить</button>
+            <button id="nextBtn" disabled>➡️ Дальше</button>
+        </div>
+
+        <div class="result-box" id="resultBox"></div>
+
+        <div style="text-align:center; margin-top: 20px;">
+            <button id="restartBtn">🔄 Начать сначала</button>
+        </div>
+    </div>
+
+    <script>
+        // ============ СЦЕНАРИЙ ДИАЛОГА ============
+        // Каждый шаг: вопрос, подсказка, паттерны для проверки ответа, реакция
+        const dialog = [
+            {
+                question: "Hello! I'm glad to see you! What's your name?",
+                hint: 'Скажи: "I\'m ..." или "My name is ..."',
+                // Паттерны: массив объектов {regex, label}
+                patterns: [
+                    { regex: /\b(i am|i'm|my name is)\s+[a-z]+/i, label: "представление" }
+                ],
+                // Ключевые слова, которых не должно быть в ответе
+                wrongWords: ["what", "how", "your name"],
+                // Ответ-подсказка для ребёнка
+                correction: 'Правильно: "I\'m Masha" или "My name is Masha"'
+            },
+            {
+                question: "How are you today?",
+                hint: 'Скажи: "I\'m fine, thanks" или "I\'m OK"',
+                patterns: [
+                    { regex: /\b(i am|i'm)\s+(fine|ok|okay|good|great|happy|sad|tired|hungry|well)/i, label: "настроение" },
+                    { regex: /\b(fine|ok|okay)\b.*\bthanks\b/i, label: "вежливый ответ" }
+                ],
+                wrongWords: ["how", "you", "today", "weather"],
+                correction: 'Правильно: "I\'m fine, thanks" или "I\'m OK"'
+            },
+            {
+                question: "What is the weather today?",
+                hint: 'Скажи: "It\'s sunny" или "It\'s rainy"',
+                patterns: [
+                    { regex: /\bit'?s\s+(sunny|rainy|cloudy|windy|cold|hot|warm|snowy|foggy)/i, label: "погода" }
+                ],
+                wrongWords: ["what", "weather", "you", "how"],
+                correction: 'Правильно: "It\'s sunny" или "It\'s rainy"'
+            },
+            {
+                question: "Have you got a sister or a brother?",
+                hint: 'Скажи: "Yes, I have a sister" или "Yes, I have a brother"',
+                patterns: [
+                    { regex: /\b(yes|yeah)?,?\s*i\s+(have|have got|'ve got)\s+(a|an)?\s*(sister|brother|sisters|brothers)/i, label: "член семьи" }
+                ],
+                wrongWords: ["what", "who", "name"],
+                correction: 'Правильно: "Yes, I have a sister" или "Yes, I have a brother"',
+                // Сохраняем, о ком сказал ребёнок, чтобы задать следующий вопрос
+                saveGender: true
+            },
+            // Этот вопрос динамический — подставляем "her" или "his"
+            {
+                question: "What's her name?",
+                questionMale: "What's his name?",
+                hint: 'Скажи: "Her name is ..." или "His name is ..."',
+                hintMale: 'Скажи: "His name is ..."',
+                patterns: [
+                    { regex: /\b(her|his)\s+name\s+is\s+[a-z]+/i, label: "имя сестры/брата" }
+                ],
+                wrongWords: ["what", "your"],
+                correction: 'Правильно: "Her name is Anna" или "His name is Max"',
+                correctionMale: 'Правильно: "His name is Max"',
+                dynamic: true
+            },
+            {
+                question: "What can you do?",
+                hint: 'Скажи: "I can swim" или "I can sing"',
+                patterns: [
+                    { regex: /\bi can\s+(swim|sing|dance|run|jump|read|write|draw|play|speak|count)/i, label: "умение" }
+                ],
+                wrongWords: ["what", "you", "do", "can"],
+                correction: 'Правильно: "I can swim" или "I can sing"'
+            }
+        ];
+
+        let currentStep = 0;
+        let siblingGender = null; // "sister" или "brother"
+        let recognition = null;
+        let isRecording = false;
+
+        // ============ ЭЛЕМЕНТЫ ============
+        const questionEl = document.getElementById('questionText');
+        const hintEl = document.getElementById('hintText');
+        const progressEl = document.getElementById('progress');
+        const playBtn = document.getElementById('playBtn');
+        const recordBtn = document.getElementById('recordBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const resultBox = document.getElementById('resultBox');
+
+        // ============ ПРОВЕРКА ПОДДЕРЖКИ ============
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            resultBox.style.display = 'block';
+            resultBox.className = 'result-box wrong';
+            resultBox.textContent = '⚠️ Ваш браузер не поддерживает распознавание речи. Откройте страницу в Google Chrome или Microsoft Edge.';
+        }
+
+        // ============ ПРОИЗНОШЕНИЕ (TTS) ============
+        function speak(text, callback) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.85;
+            utterance.pitch = 1.1;
+            // Ищем английский голос
+            const voices = window.speechSynthesis.getVoices();
+            const engVoice = voices.find(v => v.lang.startsWith('en'));
+            if (engVoice) utterance.voice = engVoice;
+            if (callback) utterance.onend = callback;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // ============ ПОЛУЧИТЬ ТЕКУЩИЙ ВОПРОС ============
+        function getCurrentQuestion() {
+            const step = dialog[currentStep];
+            if (step.dynamic && siblingGender === 'brother' && step.questionMale) {
+                return step.questionMale;
+            }
+            return step.question;
+        }
+
+        function getCurrentHint() {
+            const step = dialog[currentStep];
+            if (step.dynamic && siblingGender === 'brother' && step.hintMale) {
+                return step.hintMale;
+            }
+            return step.hint;
+        }
+
+        function getCurrentCorrection() {
+            const step = dialog[currentStep];
+            if (step.dynamic && siblingGender === 'brother' && step.correctionMale) {
+                return step.correctionMale;
+            }
+            return step.correction;
+        }
+
+        // ============ ОТОБРАЖЕНИЕ ШАГА ============
+        function showStep() {
+            const question = getCurrentQuestion();
+            questionEl.textContent = question;
+            hintEl.textContent = getCurrentHint();
+            progressEl.textContent = `Вопрос ${currentStep + 1} из ${dialog.length}`;
+            resultBox.style.display = 'none';
+            nextBtn.disabled = true;
+            recordBtn.disabled = false;
+        }
+
+        // ============ ПРОВЕРКА ОТВЕТА ============
+        function checkAnswer(transcript) {
+            const step = dialog[currentStep];
+            const lower = transcript.toLowerCase().trim();
+
+            // Проверка на "неправильные" слова
+            for (const wrong of step.wrongWords) {
+                if (lower.includes(wrong)) {
+                    return { status: 'wrong', message: 'Ты, кажется, повторил вопрос, а не ответил. Попробуй ещё раз!' };
+                }
+            }
+
+            // Проверка паттернов
+            for (const pattern of step.patterns) {
+                if (pattern.regex.test(lower)) {
+                    // Если это шаг про брата/сестру — запоминаем
+                    if (step.saveGender) {
+                        if (lower.includes('sister')) siblingGender = 'sister';
+                        else if (lower.includes('brother')) siblingGender = 'brother';
+                    }
+                    return { status: 'correct', message: '✅ Отлично! Ты молодец!' };
+                }
+            }
+
+            // Если ответ содержит хоть какие-то английские слова
+            const englishWords = lower.match(/[a-z]+/g);
+            if (englishWords && englishWords.length >= 2) {
+                return { status: 'almost', message: '👍 Почти получилось! Попробуй ещё раз.' };
+            }
+
+            return { status: 'wrong', message: '🤔 Я не расслышал. Давай попробуем ещё раз!' };
+        }
+
+        // ============ ЗАПИСЬ И РАСПОЗНАВАНИЕ ============
+        function startRecording() {
+            if (!SpeechRecognition) return;
+            if (isRecording) return;
+
+            isRecording = true;
+            recordBtn.disabled = true;
+            resultBox.style.display = 'block';
+            resultBox.className = 'result-box listening';
+            resultBox.innerHTML = '🎤 Слушаю... Говори!';
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+            recognition.continuous = false;
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                const result = checkAnswer(transcript);
+                displayResult(result, transcript);
+                isRecording = false;
+                recordBtn.disabled = false;
+                if (result.status === 'correct') {
+                    nextBtn.disabled = false;
+                }
+            };
+
+            recognition.onerror = (event) => {
+                isRecording = false;
+                recordBtn.disabled = false;
+                resultBox.className = 'result-box wrong';
+                if (event.error === 'no-speech') {
+                    resultBox.innerHTML = '🔇 Я ничего не услышал. Попробуй говорить громче!';
+                } else if (event.error === 'not-allowed') {
+                    resultBox.innerHTML = '🎤 Разреши доступ к микрофону в настройках браузера.';
+                } else {
+                    resultBox.innerHTML = '😕 Ошибка: ' + event.error + '. Попробуй ещё раз.';
+                }
+            };
+
+            recognition.onend = () => {
+                isRecording = false;
+                recordBtn.disabled = false;
+            };
+
+            try {
+                recognition.start();
+            } catch (e) {
+                isRecording = false;
+                recordBtn.disabled = false;
+            }
+        }
+
+        function displayResult(result, transcript) {
+            resultBox.style.display = 'block';
+            resultBox.className = 'result-box ' + result.status;
+            let html = result.message;
+            if (result.status !== 'correct') {
+                html += `<div class="correction">💡 ${getCurrentCorrection()}</div>`;
+            }
+            html += `<div class="heard">Ты сказал: "${transcript}"</div>`;
+            resultBox.innerHTML = html;
+        }
+
+        // ============ ПЕРЕХОД К СЛЕДУЮЩЕМУ ШАГУ ============
+        function nextStep() {
+            currentStep++;
+            if (currentStep >= dialog.length) {
+                // Финал
+                questionEl.textContent = '🎉 Great job! Well done!';
+                hintEl.textContent = 'Ты прошёл все вопросы!';
+                progressEl.textContent = 'Готово!';
+                resultBox.style.display = 'block';
+                resultBox.className = 'result-box correct';
+                resultBox.innerHTML = '🌟 Ты отлично поговорил по-английски! Молодец!';
+                recordBtn.disabled = true;
+                nextBtn.disabled = true;
+                speak('Great job! Well done! You are amazing!');
+                return;
+            }
+            showStep();
+        }
+
+        // ============ КНОПКИ ============
+        playBtn.addEventListener('click', () => {
+            speak(getCurrentQuestion());
+        });
+
+        recordBtn.addEventListener('click', startRecording);
+
+        nextBtn.addEventListener('click', () => {
+            nextStep();
+            // Автоматически озвучиваем следующий вопрос
+            setTimeout(() => speak(getCurrentQuestion()), 300);
+        });
+
+        restartBtn.addEventListener('click', () => {
+            currentStep = 0;
+            siblingGender = null;
+            showStep();
+            resultBox.style.display = 'none';
+        });
+
+        // ============ СТАРТ ============
+        // Прогружаем голоса
+        window.speechSynthesis.onvoiceschanged = () => {};
+
+        showStep();
+    </script>
+</body>
+</html>
